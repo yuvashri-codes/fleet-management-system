@@ -305,3 +305,47 @@ class FleetAPITests(APITestCase):
         titles = [n['title'] for n in response.data]
         self.assertIn('Insurance Expiring Soon', titles)
 
+    def test_ai_predictive_maintenance_view(self):
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(reverse('ai-maintenance'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(len(response.data) > 0)
+        self.assertIn('maintenance_probability', response.data[0])
+        self.assertIn('risk_level', response.data[0])
+
+    def test_ai_fuel_prediction_view(self):
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(reverse('ai-fuel') + '?distance=200&load_tons=10')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(len(response.data) > 0)
+        self.assertIn('expected_fuel_consumption', response.data[0])
+        self.assertIn('expected_cost', response.data[0])
+
+    def test_ai_driver_score_view(self):
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(reverse('ai-driver-score'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(len(response.data) > 0)
+        self.assertIn('overall_score', response.data[0])
+
+    def test_ai_fleet_health_view(self):
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(reverse('ai-fleet-health'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('overall_score', response.data)
+        self.assertIn('recommendations', response.data)
+
+    def test_ai_cost_forecast_view(self):
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(reverse('ai-cost-forecast'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('monthly_fuel_forecast', response.data)
+        self.assertIn('monthly_maintenance_forecast', response.data)
+
+    def test_ai_recommendations_view(self):
+        self.client.force_authenticate(user=self.admin_user)
+        response = self.client.get(reverse('ai-recommendations'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(len(response.data) > 0)
+
+

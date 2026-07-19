@@ -896,3 +896,60 @@ class MaintenanceReportView(APIView):
         serializer = MaintenanceSerializer(filtered_maint, many=True, context={'request': request})
         return Response(serializer.data)
 
+
+from .ai_service import PredictiveAIService
+
+class AIPredictiveMaintenanceView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        result = PredictiveAIService.get_maintenance_predictions(request.user)
+        return Response(result)
+
+
+class AIFuelPredictionView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        try:
+            distance = float(request.query_params.get('distance', 100.0))
+            load_tons = float(request.query_params.get('load_tons', 5.0))
+        except ValueError:
+            distance = 100.0
+            load_tons = 5.0
+        result = PredictiveAIService.get_fuel_predictions(request.user, distance, load_tons)
+        return Response(result)
+
+
+class AIDriverScoreView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        result = PredictiveAIService.get_driver_scores(request.user)
+        return Response(result)
+
+
+class AIFleetHealthView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        result = PredictiveAIService.get_fleet_health(request.user)
+        return Response(result)
+
+
+class AICostForecastView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        result = PredictiveAIService.get_cost_forecast(request.user)
+        return Response(result)
+
+
+class AIRecommendationsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        result = PredictiveAIService.get_intelligent_recommendations(request.user)
+        return Response(result)
+
+

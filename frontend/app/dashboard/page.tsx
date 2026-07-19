@@ -1,15 +1,16 @@
 'use client';
 
 import React, { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Truck, Users, MapPin, Flame, Wrench, HeartPulse, RefreshCw, AlertTriangle, 
   CheckCircle, Info, Calendar, DollarSign, Milestone, ShieldAlert, Award, 
-  ArrowRight, ShieldCheck, TrendingUp, BarChart4, ClipboardList
+  ArrowRight, ShieldCheck, TrendingUp, BarChart4, ClipboardList, Brain, Activity, Sparkles, Fuel
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { 
-  analyticsService, vehicleService, driverService
+  analyticsService, vehicleService, driverService, aiAnalyticsService
 } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,6 +25,7 @@ import {
 } from 'recharts'
 
 export default function AnalyticsDashboardPage() {
+  const router = useRouter()
   const { toast } = useToast()
   const [isMounted, setIsMounted] = useState(false)
 
@@ -108,7 +110,28 @@ export default function AnalyticsDashboardPage() {
     queryFn: () => analyticsService.getRecentActivities()
   })
 
-  const isLoading = isStatsLoading || isKpisLoading || isChartsLoading || isActivitiesLoading
+  // AI Analytics Queries (Sprint 5)
+  const { data: aiHealth, isLoading: isAIHealthLoading } = useQuery({
+    queryKey: ['dashboard-ai-health'],
+    queryFn: () => aiAnalyticsService.getFleetHealth()
+  })
+
+  const { data: aiForecast } = useQuery({
+    queryKey: ['dashboard-ai-forecast'],
+    queryFn: () => aiAnalyticsService.getCostForecast()
+  })
+
+  const { data: aiRecs } = useQuery({
+    queryKey: ['dashboard-ai-recs'],
+    queryFn: () => aiAnalyticsService.getRecommendations()
+  })
+
+  const { data: aiMaint } = useQuery({
+    queryKey: ['dashboard-ai-maint'],
+    queryFn: () => aiAnalyticsService.getMaintenancePredictions()
+  })
+
+  const isLoading = isStatsLoading || isKpisLoading || isChartsLoading || isActivitiesLoading || isAIHealthLoading
   const isRefetching = isStatsRefetching || isKpisRefetching || isChartsRefetching || isActivitiesRefetching
 
   const handleRefresh = () => {
@@ -119,7 +142,7 @@ export default function AnalyticsDashboardPage() {
     toast({
       type: 'success',
       title: 'Metrics Synchronized',
-      description: 'BI database aggregates updated in real-time.'
+      description: 'BI database aggregates and AI predictions updated.'
     })
   }
 
@@ -221,6 +244,70 @@ export default function AnalyticsDashboardPage() {
 
         </div>
       </Card>
+
+      {/* AI PREDICTIVE FLEET INTELLIGENCE MODULES CARDS */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5 select-none">
+          <Brain className="h-4 w-4 text-primary animate-pulse" />
+          AI Predictive Fleet Intelligence
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          
+          <Card className="border bg-gradient-to-br from-indigo-500/5 to-transparent hover:border-indigo-500/35 transition-all p-4 cursor-pointer select-none" onClick={() => router.push('/dashboard/fleet-intelligence/health')}>
+            <span className="text-[10px] font-bold text-indigo-500 uppercase flex items-center gap-1">
+              <Activity className="h-3.5 w-3.5" />
+              Fleet Health Score
+            </span>
+            <h3 className="text-xl font-extrabold text-foreground mt-1.5">{aiHealth?.overall_score ?? 90}%</h3>
+            <span className="text-[9px] text-muted-foreground block mt-0.5">Availability & Safety index</span>
+          </Card>
+
+          <Card className="border bg-gradient-to-br from-rose-500/5 to-transparent hover:border-rose-500/35 transition-all p-4 cursor-pointer select-none" onClick={() => router.push('/dashboard/fleet-intelligence/maintenance')}>
+            <span className="text-[10px] font-bold text-rose-500 uppercase flex items-center gap-1">
+              <Wrench className="h-3.5 w-3.5" />
+              Maintenance Risk
+            </span>
+            <h3 className="text-xl font-extrabold text-rose-500 mt-1.5">
+              {aiMaint?.filter((v: any) => v.risk_level === 'HIGH').length ?? 0} Critical
+            </h3>
+            <span className="text-[9px] text-muted-foreground block mt-0.5">High failure probabilities</span>
+          </Card>
+
+          <Card className="border bg-gradient-to-br from-emerald-500/5 to-transparent hover:border-emerald-500/35 transition-all p-4 cursor-pointer select-none" onClick={() => router.push('/dashboard/fleet-intelligence/fuel')}>
+            <span className="text-[10px] font-bold text-emerald-500 uppercase flex items-center gap-1">
+              <Fuel className="h-3.5 w-3.5" />
+              Predicted Fuel Cost
+            </span>
+            <h3 className="text-xl font-extrabold text-foreground mt-1.5">
+              ${Number(aiForecast?.monthly_fuel_forecast ?? 8500).toLocaleString(undefined, {maximumFractionDigits: 0})}
+            </h3>
+            <span className="text-[9px] text-muted-foreground block mt-0.5">Monthly fuel estimation</span>
+          </Card>
+
+          <Card className="border bg-gradient-to-br from-blue-500/5 to-transparent hover:border-blue-500/35 transition-all p-4 cursor-pointer select-none" onClick={() => router.push('/dashboard/fleet-intelligence/health')}>
+            <span className="text-[10px] font-bold text-blue-500 uppercase flex items-center gap-1">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Monthly Cost Forecast
+            </span>
+            <h3 className="text-xl font-extrabold text-foreground mt-1.5">
+              ${(Number(aiForecast?.monthly_fuel_forecast ?? 8500) + Number(aiForecast?.monthly_maintenance_forecast ?? 3200)).toLocaleString(undefined, {maximumFractionDigits: 0})}
+            </h3>
+            <span className="text-[9px] text-muted-foreground block mt-0.5">Fuel & service budget</span>
+          </Card>
+
+          <Card className="border bg-gradient-to-br from-amber-500/5 to-transparent hover:border-amber-500/35 transition-all p-4 cursor-pointer select-none" onClick={() => router.push('/dashboard/fleet-intelligence/recommendations')}>
+            <span className="text-[10px] font-bold text-amber-500 uppercase flex items-center gap-1">
+              <Sparkles className="h-3.5 w-3.5" />
+              AI Recommendations
+            </span>
+            <h3 className="text-xl font-extrabold text-amber-500 mt-1.5">
+              {aiRecs?.length ?? 3} Active
+            </h3>
+            <span className="text-[9px] text-muted-foreground block mt-0.5">Actionable insights alerts</span>
+          </Card>
+
+        </div>
+      </div>
 
       {/* RENDER COUNTER CARDS LOADING SKELETON */}
       {isLoading || !stats ? (

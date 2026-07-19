@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Shield, Menu, X, LayoutDashboard, Truck, Users, MapPin, 
   Flame, Wrench, FileText, BarChart3, Settings, LogOut, 
-  Search, Bell, User as UserIcon, Lock, ChevronLeft, ChevronRight, Moon, Sun, AlertTriangle
+  Search, Bell, User as UserIcon, Lock, ChevronLeft, ChevronRight, Moon, Sun, AlertTriangle, Brain
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { authService, globalSearchService, analyticsService } from '@/lib/api'
@@ -121,7 +121,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Fuel Management', icon: Flame, href: '/dashboard/fuel', active: pathname.startsWith('/dashboard/fuel'), disabled: false },
     { name: 'Maintenance', icon: Wrench, href: '/dashboard/maintenance', active: pathname.startsWith('/dashboard/maintenance'), disabled: false },
     { name: 'Reports', icon: FileText, href: '/dashboard/reports', active: pathname.startsWith('/dashboard/reports'), disabled: false },
-    { name: 'Analytics', icon: BarChart3, href: '#', active: false, disabled: true },
+    { name: 'AI Analytics', icon: Brain, href: '/dashboard/fleet-intelligence', active: pathname.startsWith('/dashboard/fleet-intelligence'), disabled: false },
     { name: 'Settings', icon: Settings, href: '#', active: false, disabled: true },
   ]
 

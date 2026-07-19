@@ -277,9 +277,44 @@ npm run dev
 | **GET** | `/api/reports/fuel/` | IsAuthenticated | Driver (filtered to own) | Retrieves refueling logs transactions ledger |
 | **GET** | `/api/reports/maintenance/` | IsAuthenticated | Driver (filtered to own) | Retrieves maintenance work order tickets spreadsheet |
 
+### AI Analytics & Predictions Gateway (Sprint 5)
+| Method | Endpoint | Auth | Role restrictions | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/ai/maintenance/` | IsAuthenticated | Driver (filtered to own) | Predicts vehicle maintenance failure risk probabilities |
+| **GET** | `/api/ai/fuel/` | IsAuthenticated | Driver (filtered to own) | Models future trip fuel consumption and load efficiency |
+| **GET** | `/api/ai/driver-score/` | IsAuthenticated | Driver (filtered to own) | Aggregates safety performance indexes for operators ranking |
+| **GET** | `/api/ai/fleet-health/` | IsAuthenticated | Driver (filtered to own) | Computes overall fleet diagnostic health indexes |
+| **GET** | `/api/ai/cost-forecast/` | IsAuthenticated | Driver (filtered to own) | Projects monthly expenses for fuel and services |
+| **GET** | `/api/ai/recommendations/` | IsAuthenticated | Driver (filtered to own) | Lists AI operations optimization recommendations |
+
 ---
 
-## 6. Testing Instructions
+## 6. AI Analytics Microservice Setup (Sprint 5)
+
+The AI Microservice runs on a Flask REST server and operates Scikit-Learn models trained on simulated datasets.
+
+### Model Training
+To generate the training datasets and build/save the ML classifiers:
+1. Navigate to the `analytics/` folder:
+   ```bash
+   cd analytics
+   ```
+2. Run the training script using the python environment:
+   ```bash
+   python train.py
+   ```
+   This will train the Random Forest and Linear Regression models and save them to `trained_models/`.
+
+### Run Flask Server
+To start the microservice locally:
+```bash
+python app.py
+```
+By default, the server will start on port `5001`.
+
+---
+
+## 7. Testing Instructions
 
 ### Django API Validation
 To execute the automated unit and integration tests verifying date/cost validations, status checks, and role permissions:

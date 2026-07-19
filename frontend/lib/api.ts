@@ -370,3 +370,32 @@ export const reportsService = {
   }
 }
 
+// AI Predictions and Analytics API Service (Sprint 5)
+export const aiAnalyticsService = {
+  async getMaintenancePredictions() {
+    const response = await api.get('/api/ai/maintenance/')
+    return response.data
+  },
+  async getFuelPredictions(params?: { distance: number; load_tons: number }) {
+    const response = await api.get('/api/ai/fuel/', { params })
+    return response.data
+  },
+  async getDriverScores() {
+    const response = await api.get('/api/ai/driver-score/')
+    return response.data
+  },
+  async getFleetHealth() {
+    const response = await api.get('/api/ai/fleet-health/')
+    return response.data
+  },
+  async getCostForecast() {
+    const response = await api.get('/api/ai/cost-forecast/')
+    return response.data
+  },
+  async getRecommendations() {
+    const response = await api.get('/api/ai/recommendations/')
+    return response.data
+  }
+}
+
+

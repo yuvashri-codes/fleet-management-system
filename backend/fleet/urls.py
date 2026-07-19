@@ -6,7 +6,9 @@ from .views import (
     DashboardStatsView, DashboardKPIView, DashboardChartsView,
     DashboardRecentActivitiesView, DashboardNotificationsView,
     FleetReportView, VehicleReportView, DriverReportView,
-    TripsReportView, FuelReportView, MaintenanceReportView
+    TripsReportView, FuelReportView, MaintenanceReportView,
+    AIPredictiveMaintenanceView, AIFuelPredictionView, AIDriverScoreView,
+    AIFleetHealthView, AICostForecastView, AIRecommendationsView
 )
 
 router = DefaultRouter()
@@ -29,5 +31,14 @@ urlpatterns = [
     path('reports/trips/', TripsReportView.as_view(), name='report-trips'),
     path('reports/fuel/', FuelReportView.as_view(), name='report-fuel'),
     path('reports/maintenance/', MaintenanceReportView.as_view(), name='report-maintenance'),
+    
+    # AI Predictions Gateway endpoints
+    path('ai/maintenance/', AIPredictiveMaintenanceView.as_view(), name='ai-maintenance'),
+    path('ai/fuel/', AIFuelPredictionView.as_view(), name='ai-fuel'),
+    path('ai/driver-score/', AIDriverScoreView.as_view(), name='ai-driver-score'),
+    path('ai/fleet-health/', AIFleetHealthView.as_view(), name='ai-fleet-health'),
+    path('ai/cost-forecast/', AICostForecastView.as_view(), name='ai-cost-forecast'),
+    path('ai/recommendations/', AIRecommendationsView.as_view(), name='ai-recommendations'),
+
     path('', include(router.urls)),
 ]
