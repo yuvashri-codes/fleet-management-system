@@ -8,7 +8,8 @@ from .views import (
     FleetReportView, VehicleReportView, DriverReportView,
     TripsReportView, FuelReportView, MaintenanceReportView,
     AIPredictiveMaintenanceView, AIFuelPredictionView, AIDriverScoreView,
-    AIFleetHealthView, AICostForecastView, AIRecommendationsView
+    AIFleetHealthView, AICostForecastView, AIRecommendationsView,
+    AuditLogListView, SystemSettingsDetailView, DatabaseBackupExportView, DatabaseBackupImportView
 )
 
 router = DefaultRouter()
@@ -39,6 +40,12 @@ urlpatterns = [
     path('ai/fleet-health/', AIFleetHealthView.as_view(), name='ai-fleet-health'),
     path('ai/cost-forecast/', AICostForecastView.as_view(), name='ai-cost-forecast'),
     path('ai/recommendations/', AIRecommendationsView.as_view(), name='ai-recommendations'),
+
+    # Audit Logs, Settings & Database Backup endpoints
+    path('audit-logs/', AuditLogListView.as_view(), name='audit-logs'),
+    path('settings/', SystemSettingsDetailView.as_view(), name='system-settings'),
+    path('backup/export/', DatabaseBackupExportView.as_view(), name='backup-export'),
+    path('backup/import/', DatabaseBackupImportView.as_view(), name='backup-import'),
 
     path('', include(router.urls)),
 ]

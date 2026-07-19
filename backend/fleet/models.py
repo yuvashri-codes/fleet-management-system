@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MinValueValidator
+from django.conf import settings
 
 class Vehicle(models.Model):
     class Status(models.TextChoices):
@@ -179,3 +180,34 @@ class Maintenance(models.Model):
 
     def __str__(self):
         return f"{self.maintenance_type} Maintenance for {self.vehicle.vehicle_number} ({self.status})"
+
+
+class AuditLog(models.Model):
+    action = models.CharField(max_length=100)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    details = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        username = self.user.email if self.user else "Anonymous"
+        return f"{username} - {self.action} at {self.timestamp}"
+
+
+class SystemSettings(models.Model):
+    company_name = models.CharField(max_length=150, default="FleetGuard Logistics")
+    company_email = models.EmailField(default="info@fleetguard.com")
+    currency = models.CharField(max_length=10, default="USD")
+    theme = models.CharField(max_length=20, default="dark")
+    fuel_unit = models.CharField(max_length=20, default="Liters")
+    distance_unit = models.CharField(max_length=20, default="Kilometers")
+    notification_email = models.BooleanField(default=True)
+    notification_sms = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"System Settings: {self.company_name}"
+
+

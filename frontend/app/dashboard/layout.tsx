@@ -122,7 +122,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Maintenance', icon: Wrench, href: '/dashboard/maintenance', active: pathname.startsWith('/dashboard/maintenance'), disabled: false },
     { name: 'Reports', icon: FileText, href: '/dashboard/reports', active: pathname.startsWith('/dashboard/reports'), disabled: false },
     { name: 'AI Analytics', icon: Brain, href: '/dashboard/fleet-intelligence', active: pathname.startsWith('/dashboard/fleet-intelligence'), disabled: false },
-    { name: 'Settings', icon: Settings, href: '#', active: false, disabled: true },
+    { name: 'Settings', icon: Settings, href: '/dashboard/settings', active: pathname.startsWith('/dashboard/settings'), disabled: false },
   ]
 
 

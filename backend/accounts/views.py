@@ -11,6 +11,18 @@ User = get_user_model()
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
+    def post(self, request, *args, **options):
+        response = super().post(request, *args, **options)
+        if response.status_code == 200:
+            email = request.data.get('email')
+            try:
+                user = User.objects.get(email=email)
+                from fleet.logging_utils import log_audit
+                log_audit("Login", user, request, f"Successful JWT authentication for {email}")
+            except User.DoesNotExist:
+                pass
+        return response
+
 class RegisterView(APIView):
     permission_classes = (permissions.AllowAny,)
 
@@ -18,7 +30,9 @@ class RegisterView(APIView):
         serializer = UserRegisterSerializer(data=request.data)
         if serializer.is_valid():
             user = serializer.save()
-            # Generate tokens automatically for the user after registration
+            from fleet.logging_utils import log_audit
+            log_audit("Register", user, request, f"User registered: {user.email}")
+            
             refresh = RefreshToken.for_user(user)
             refresh['email'] = user.email
             refresh['role'] = user.role
@@ -45,6 +59,8 @@ class LogoutView(APIView):
                 
             token = RefreshToken(refresh_token)
             token.blacklist()
+            from fleet.logging_utils import log_audit
+            log_audit("Logout", request.user, request, f"User {request.user.email} logged out")
             return Response({"detail": "Successfully logged out."}, status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: fleet_db
+    environment:
+      POSTGRES_DB: fleet_management_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "2004"
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: always
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fleet_backend
+    environment:
+      - DB_HOST=db
+      - DB_NAME=fleet_management_db
+      - DB_USER=postgres
+      - DB_PASSWORD=2004
+      - DB_PORT=5432
+      - FLASK_API_URL=http://analytics:5001
+      - SEED_ADMIN_EMAIL=yuvashrim28@gmail.com
+      - SEED_ADMIN_PASSWORD=admin@123
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    restart: always
+
+  analytics:
+    build:
+      context: ./analytics
+      dockerfile: Dockerfile
+    container_name: fleet_analytics
+    environment:
+      - FLASK_PORT=5001
+      - FLASK_DEBUG=False
+    ports:
+      - "5001:5001"
+    restart: always
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fleet_frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  pgdata:

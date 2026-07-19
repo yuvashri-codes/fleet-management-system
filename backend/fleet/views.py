@@ -70,6 +70,22 @@ class VehicleViewSet(viewsets.ModelViewSet):
                 
         return queryset
 
+    def perform_create(self, serializer):
+        vehicle = serializer.save()
+        from .logging_utils import log_audit
+        log_audit("Vehicle Creation", self.request.user, self.request, f"Created vehicle {vehicle.vehicle_number}")
+
+    def perform_update(self, serializer):
+        vehicle = serializer.save()
+        from .logging_utils import log_audit
+        log_audit("Vehicle Update", self.request.user, self.request, f"Updated vehicle {vehicle.vehicle_number}")
+
+    def perform_destroy(self, instance):
+        from .logging_utils import log_audit
+        log_audit("Vehicle Delete", self.request.user, self.request, f"Deleted vehicle {instance.vehicle_number}")
+        instance.delete()
+
+
 
 class DriverViewSet(viewsets.ModelViewSet):
     queryset = Driver.objects.all()
@@ -241,29 +257,35 @@ class TripViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'DRIVER':
             raise permissions.exceptions.PermissionDenied("Drivers cannot create trips.")
-        serializer.save()
+        trip = serializer.save()
+        from .logging_utils import log_audit
+        log_audit("Trip Creation", user, self.request, f"Scheduled trip {trip.trip_name}")
 
     def perform_update(self, serializer):
         user = self.request.user
         if user.role == 'DRIVER':
-            # Driver can only update current_status on their own trip
             instance = self.get_object()
             if instance.driver.email != user.email:
                 raise permissions.exceptions.PermissionDenied("You can only update your own trips.")
             
-            # Check fields being modified
             allowed_fields = {'current_status'}
             request_fields = set(self.request.data.keys())
             for field in request_fields:
                 if field not in allowed_fields and field in serializer.fields:
                     raise serializers.ValidationError({"detail": "Drivers are only allowed to update the status of their assigned trips."})
                     
-        serializer.save()
+        trip = serializer.save()
+        from .logging_utils import log_audit
+        log_audit("Trip Update", user, self.request, f"Updated trip {trip.trip_name} - status: {trip.current_status}")
 
     def destroy(self, request, *args, **kwargs):
         if request.user.role == 'DRIVER':
             return Response({"detail": "Drivers cannot delete trips."}, status=status.HTTP_403_FORBIDDEN)
+        instance = self.get_object()
+        from .logging_utils import log_audit
+        log_audit("Trip Cancel/Delete", request.user, request, f"Deleted/Cancelled trip {instance.trip_name}")
         return super().destroy(request, *args, **kwargs)
+
 
 
 class FuelLogViewSet(viewsets.ModelViewSet):
@@ -305,6 +327,16 @@ class FuelLogViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(fuel_type__iexact=fuel_type)
             
         return queryset
+
+    def perform_create(self, serializer):
+        log = serializer.save()
+        from .logging_utils import log_audit
+        log_audit("Fuel Log Creation", self.request.user, self.request, f"Recorded refueling of ${log.total_cost} for {log.vehicle.vehicle_number}")
+
+    def perform_update(self, serializer):
+        log = serializer.save()
+        from .logging_utils import log_audit
+        log_audit("Fuel Log Update", self.request.user, self.request, f"Updated refueling of ${log.total_cost} for {log.vehicle.vehicle_number}")
 
 
 class MaintenanceViewSet(viewsets.ModelViewSet):
@@ -351,6 +383,16 @@ class MaintenanceViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(scheduled_date__lte=scheduled_date_before)
             
         return queryset
+
+    def perform_create(self, serializer):
+        maint = serializer.save()
+        from .logging_utils import log_audit
+        log_audit("Maintenance Creation", self.request.user, self.request, f"Created maintenance ticket for {maint.vehicle.vehicle_number}")
+
+    def perform_update(self, serializer):
+        maint = serializer.save()
+        from .logging_utils import log_audit
+        log_audit("Maintenance Update", self.request.user, self.request, f"Updated maintenance ticket for {maint.vehicle.vehicle_number} - status: {maint.status}")
 
 
 def get_user_filtered_querysets(user):
@@ -951,5 +993,106 @@ class AIRecommendationsView(APIView):
     def get(self, request):
         result = PredictiveAIService.get_intelligent_recommendations(request.user)
         return Response(result)
+
+
+from .models import AuditLog, SystemSettings
+from .serializers import AuditLogSerializer, SystemSettingsSerializer
+import json
+import datetime
+from django.core import serializers as django_serializers
+from django.http import HttpResponse
+
+class AuditLogListView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.role in ['ADMIN', 'FLEET_MANAGER']:
+            logs = AuditLog.objects.all().order_by('-timestamp')[:150]
+        else:
+            logs = AuditLog.objects.filter(user=user).order_by('-timestamp')[:150]
+        serializer = AuditLogSerializer(logs, many=True)
+        return Response(serializer.data)
+
+
+class SystemSettingsDetailView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        settings_inst, created = SystemSettings.objects.get_or_create(id=1)
+        serializer = SystemSettingsSerializer(settings_inst)
+        return Response(serializer.data)
+
+    def post(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"detail": "Only administrators can modify system settings."}, status=status.HTTP_403_FORBIDDEN)
+        settings_inst, created = SystemSettings.objects.get_or_create(id=1)
+        serializer = SystemSettingsSerializer(settings_inst, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            from .logging_utils import log_audit
+            log_audit("System Settings Update", request.user, request, f"System settings updated for company: {settings_inst.company_name}")
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DatabaseBackupExportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"detail": "Only administrators can trigger database backups."}, status=status.HTTP_403_FORBIDDEN)
+        
+        data = {
+            "vehicles": json.loads(django_serializers.serialize('json', Vehicle.objects.all())),
+            "drivers": json.loads(django_serializers.serialize('json', Driver.objects.all())),
+            "trips": json.loads(django_serializers.serialize('json', Trip.objects.all())),
+            "fuel_logs": json.loads(django_serializers.serialize('json', FuelLog.objects.all())),
+            "maintenance_records": json.loads(django_serializers.serialize('json', Maintenance.objects.all())),
+            "audit_logs": json.loads(django_serializers.serialize('json', AuditLog.objects.all())),
+            "system_settings": json.loads(django_serializers.serialize('json', SystemSettings.objects.all()))
+        }
+        
+        response = HttpResponse(json.dumps(data, indent=2), content_type='application/json')
+        response['Content-Disposition'] = f'attachment; filename=fleet_backup_{datetime.date.today().isoformat()}.json'
+        
+        from .logging_utils import log_audit
+        log_audit("Database Backup Exported", request.user, request, "Database backup export successfully completed.")
+        return response
+
+
+class DatabaseBackupImportView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if request.user.role != 'ADMIN':
+            return Response({"detail": "Only administrators can restore database backups."}, status=status.HTTP_403_FORBIDDEN)
+        
+        backup_file = request.FILES.get('backup_file')
+        if not backup_file:
+            return Response({"detail": "No backup file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            data = json.loads(backup_file.read().decode('utf-8'))
+            
+            Vehicle.objects.all().delete()
+            Driver.objects.all().delete()
+            Trip.objects.all().delete()
+            FuelLog.objects.all().delete()
+            Maintenance.objects.all().delete()
+            AuditLog.objects.all().delete()
+            SystemSettings.objects.all().delete()
+            
+            for key, serialized_objects in data.items():
+                for obj in django_serializers.deserialize('json', json.dumps(serialized_objects)):
+                    obj.save()
+                    
+            from .logging_utils import log_audit
+            log_audit("Database Backup Restored", request.user, request, "Database backup restored successfully.")
+            return Response({"detail": "Database backup successfully restored."})
+            
+        except Exception as e:
+            return Response({"detail": f"Failed to restore backup: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
 
 

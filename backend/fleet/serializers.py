@@ -216,3 +216,20 @@ class MaintenanceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"actual_cost": "Actual cost must be non-negative."})
 
         return attrs
+
+
+from .models import AuditLog, SystemSettings
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+
+    class Meta:
+        model = AuditLog
+        fields = ['id', 'action', 'user', 'user_email', 'ip_address', 'details', 'timestamp']
+
+
+class SystemSettingsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SystemSettings
+        fields = '__all__'
+

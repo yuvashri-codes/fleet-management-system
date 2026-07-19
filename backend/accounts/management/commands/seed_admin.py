@@ -8,8 +8,8 @@ class Command(BaseCommand):
     help = 'Seeds a default admin account into the database'
 
     def handle(self, *args, **options):
-        email = os.getenv('SEED_ADMIN_EMAIL', 'admin@fleetmanagement.com')
-        password = os.getenv('SEED_ADMIN_PASSWORD', 'AdminPassword123!')
+        email = os.getenv('SEED_ADMIN_EMAIL', 'yuvashrim28@gmail.com')
+        password = os.getenv('SEED_ADMIN_PASSWORD', 'admin@123')
         
         self.stdout.write(f"Seeding admin account: {email}")
         

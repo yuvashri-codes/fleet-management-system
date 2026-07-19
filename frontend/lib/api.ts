@@ -398,4 +398,41 @@ export const aiAnalyticsService = {
   }
 }
 
+// System Settings, Backups and Auditing services (Sprint 6)
+export const auditLogsService = {
+  async getAll() {
+    const response = await api.get('/api/audit-logs/')
+    return response.data
+  }
+}
+
+export const settingsService = {
+  async get() {
+    const response = await api.get('/api/settings/')
+    return response.data
+  },
+  async update(data: Record<string, any>) {
+    const response = await api.post('/api/settings/', data)
+    return response.data
+  }
+}
+
+export const backupService = {
+  async exportBackup() {
+    const response = await api.get('/api/backup/export/', { responseType: 'blob' })
+    return response.data
+  },
+  async importBackup(file: File) {
+    const formData = new FormData()
+    formData.append('backup_file', file)
+    const response = await api.post('/api/backup/import/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response.data
+  }
+}
+
+
 
