@@ -135,3 +135,85 @@ export const authService = {
     return response.data
   }
 }
+
+// Vehicle CRUD API Service
+export const vehicleService = {
+  async getAll(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/vehicles/', { params })
+    return response.data
+  },
+
+  async getById(id: number | string) {
+    const response = await api.get(`/api/vehicles/${id}/`)
+    return response.data
+  },
+
+  async create(data: FormData) {
+    const response = await api.post('/api/vehicles/', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  async update(id: number | string, data: FormData) {
+    const response = await api.put(`/api/vehicles/${id}/`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  async delete(id: number | string) {
+    const response = await api.delete(`/api/vehicles/${id}/`)
+    return response.data
+  },
+}
+
+// Driver CRUD API Service
+export const driverService = {
+  async getAll(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/drivers/', { params })
+    return response.data
+  },
+
+  async getById(id: number | string) {
+    const response = await api.get(`/api/drivers/${id}/`)
+    return response.data
+  },
+
+  async create(data: FormData) {
+    const response = await api.post('/api/drivers/', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  async update(id: number | string, data: FormData) {
+    const response = await api.put(`/api/drivers/${id}/`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  async delete(id: number | string) {
+    const response = await api.delete(`/api/drivers/${id}/`)
+    return response.data
+  },
+}
+
+// Global Telemetry Search Service
+export const globalSearchService = {
+  async search(query: string) {
+    const response = await api.get('/api/global-search/', {
+      params: { q: query },
+    })
+    return response.data
+  },
+}

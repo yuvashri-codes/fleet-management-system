@@ -1,32 +1,65 @@
 'use client';
 
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { motion } from 'framer-motion'
 import { 
   Truck, Users, MapPin, Flame, Wrench, HeartPulse, 
   RefreshCw, AlertTriangle, CheckCircle, Info
 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { vehicleService, driverService } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import { Vehicle, Driver } from '@/types'
 
 export default function DashboardPage() {
-  const [isLoading, setIsLoading] = useState(true)
+  // Fetch real vehicles data
+  const { 
+    data: vehiclesData, 
+    isLoading: isVehiclesLoading, 
+    refetch: refetchVehicles,
+    isRefetching: isVehiclesRefetching
+  } = useQuery({
+    queryKey: ['vehicles-dashboard'],
+    queryFn: () => vehicleService.getAll({ page_size: 100 })
+  })
 
-  // Simulate network fetching latency to showcase loading skeletons
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 1500)
-    return () => clearTimeout(timer)
-  }, [])
+  // Fetch real drivers data
+  const { 
+    data: driversData, 
+    isLoading: isDriversLoading, 
+    refetch: refetchDrivers,
+    isRefetching: isDriversRefetching
+  } = useQuery({
+    queryKey: ['drivers-dashboard'],
+    queryFn: () => driverService.getAll({ page_size: 100 })
+  })
+
+  const isLoading = isVehiclesLoading || isDriversLoading
+  const isRefetching = isVehiclesRefetching || isDriversRefetching
 
   const handleRefresh = () => {
-    setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
+    refetchVehicles()
+    refetchDrivers()
   }
+
+  const vehicles: Vehicle[] = vehiclesData?.results || []
+  const drivers: Driver[] = driversData?.results || []
+
+  // Calculate vehicle states
+  const totalVehiclesCount = vehiclesData?.count || vehicles.length
+  const availableVehicles = vehicles.filter(v => v.status === 'AVAILABLE').length
+  const inUseVehicles = vehicles.filter(v => v.status === 'IN_USE').length
+  const maintenanceVehicles = vehicles.filter(v => v.status === 'MAINTENANCE').length
+  const inactiveVehicles = vehicles.filter(v => v.status === 'INACTIVE').length
+
+  // Calculate driver states
+  const totalDriversCount = driversData?.count || drivers.length
+  const activeDrivers = drivers.filter(d => d.status === 'ACTIVE').length
+  const inactiveDrivers = drivers.filter(d => d.status === 'INACTIVE').length
+  const suspendedDrivers = drivers.filter(d => d.status === 'SUSPENDED').length
+  const driverUtilization = totalDriversCount > 0 ? Math.round((activeDrivers / totalDriversCount) * 100) : 0
 
   // Animated Container Variants
   const containerVariants = {
@@ -44,26 +77,26 @@ export default function DashboardPage() {
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
   }
 
-  // Dashboard Stats Mock Data
+  // Dashboard Stats Grid layout
   const stats = [
     {
       title: "Total Vehicles",
-      value: "142",
-      description: "120 En Route • 15 Idle • 7 Down",
+      value: String(totalVehiclesCount),
+      description: `${inUseVehicles} In Use • ${availableVehicles} Available • ${maintenanceVehicles} Down`,
       icon: Truck,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
-      trend: "+3 this week",
+      trend: `${availableVehicles + inUseVehicles} Active Status`,
       trendType: "up"
     },
     {
       title: "Active Drivers",
-      value: "98",
-      description: "82 On Duty • 16 Resting",
+      value: String(totalDriversCount),
+      description: `${activeDrivers} Active • ${inactiveDrivers} Inactive • ${suspendedDrivers} Suspended`,
       icon: Users,
       color: "text-accent",
       bg: "bg-accent/10",
-      trend: "94% utilization",
+      trend: `${driverUtilization}% utilization`,
       trendType: "up"
     },
     {
@@ -131,9 +164,9 @@ export default function DashboardPage() {
           variant="outline" 
           size="sm" 
           onClick={handleRefresh}
-          className="self-start sm:self-center gap-2 hover:border-primary active:scale-95"
+          className="self-start sm:self-center gap-2 hover:border-primary active:scale-95 bg-card"
         >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${isLoading || isRefetching ? 'animate-spin' : ''}`} />
           Force Refresh
         </Button>
       </div>

@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     
     # Local apps
     'accounts',
+    'fleet',
 ]
 
 MIDDLEWARE = [
@@ -151,3 +152,7 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = os.getenv('CORS_ALLOW_ALL_ORIGINS', 'True').lower() in ('true', '1', 'yes')
 CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 CORS_ALLOW_CREDENTIALS = True
+
+# Media files configuration (uploaded images)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'

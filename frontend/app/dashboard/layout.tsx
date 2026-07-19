@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Shield, Menu, X, LayoutDashboard, Truck, Users, MapPin, 
   Flame, Wrench, FileText, BarChart3, Settings, LogOut, 
   Search, Bell, User as UserIcon, Lock, ChevronLeft, ChevronRight, Moon, Sun
 } from 'lucide-react'
-import { authService } from '@/lib/api'
+import { authService, globalSearchService } from '@/lib/api'
 import { useToast } from '@/components/ui/toast'
 import { User } from '@/types'
 
@@ -23,6 +23,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [showProfileMenu, setShowProfileMenu] = useState<boolean>(false)
   const [showNotifications, setShowNotifications] = useState<boolean>(false)
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false)
+  const pathname = usePathname()
+  
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<{ vehicles: any[]; drivers: any[] } | null>(null)
+  const [isSearching, setIsSearching] = useState(false)
+  const [showSearchResults, setShowSearchResults] = useState(false)
+
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSearchResults(null)
+      setShowSearchResults(false)
+      return
+    }
+
+    const delayDebounce = setTimeout(async () => {
+      setIsSearching(true)
+      try {
+        const results = await globalSearchService.search(searchQuery)
+        setSearchResults(results)
+        setShowSearchResults(true)
+      } catch (err) {
+        console.error("Global search failed:", err)
+      } finally {
+        setIsSearching(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(delayDebounce)
+  }, [searchQuery])
 
   // Auth protection check
   useEffect(() => {
@@ -75,9 +104,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   // Navigation Items
   const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', active: true, disabled: false },
-    { name: 'Vehicles', icon: Truck, href: '#', active: false, disabled: true },
-    { name: 'Drivers', icon: Users, href: '#', active: false, disabled: true },
+    { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', active: pathname === '/dashboard', disabled: false },
+    { name: 'Vehicles', icon: Truck, href: '/dashboard/vehicles', active: pathname.startsWith('/dashboard/vehicles'), disabled: false },
+    { name: 'Drivers', icon: Users, href: '/dashboard/drivers', active: pathname.startsWith('/dashboard/drivers'), disabled: false },
     { name: 'Trips', icon: MapPin, href: '#', active: false, disabled: true },
     { name: 'Fuel Management', icon: Flame, href: '#', active: false, disabled: true },
     { name: 'Maintenance', icon: Wrench, href: '#', active: false, disabled: true },
@@ -304,8 +333,81 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <input
                 type="text"
                 placeholder="Global telemetry search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => { if (searchResults) setShowSearchResults(true) }}
                 className="w-full pl-9 pr-4 py-1.5 bg-muted/60 border border-input rounded-lg text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:bg-background transition-all"
               />
+
+              <AnimatePresence>
+                {showSearchResults && searchResults && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowSearchResults(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute left-0 right-0 top-full mt-2 rounded-xl border bg-card p-3 shadow-xl z-50 glass-panel max-h-80 overflow-y-auto w-80 text-xs text-foreground"
+                    >
+                      {searchResults.vehicles.length === 0 && searchResults.drivers.length === 0 ? (
+                        <p className="text-muted-foreground py-2 text-center">No results found</p>
+                      ) : (
+                        <div className="space-y-4">
+                          {searchResults.vehicles.length > 0 && (
+                            <div>
+                              <h5 className="font-bold text-primary mb-1 uppercase tracking-wider text-[10px]">Vehicles</h5>
+                              <div className="space-y-1">
+                                {searchResults.vehicles.map((v) => (
+                                  <button
+                                    key={v.id}
+                                    onClick={() => {
+                                      router.push(`/dashboard/vehicles/${v.id}`)
+                                      setShowSearchResults(false)
+                                      setSearchQuery('')
+                                    }}
+                                    className="w-full text-left p-1.5 rounded hover:bg-muted/80 transition-colors flex justify-between items-center"
+                                  >
+                                    <div>
+                                      <p className="font-semibold">{v.brand} {v.model}</p>
+                                      <p className="text-[10px] text-muted-foreground">{v.vehicle_number}</p>
+                                    </div>
+                                    <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium capitalize">{v.status.replace('_', ' ').toLowerCase()}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {searchResults.drivers.length > 0 && (
+                            <div>
+                              <h5 className="font-bold text-accent mb-1 uppercase tracking-wider text-[10px]">Drivers</h5>
+                              <div className="space-y-1">
+                                {searchResults.drivers.map((d) => (
+                                  <button
+                                    key={d.id}
+                                    onClick={() => {
+                                      router.push(`/dashboard/drivers/${d.id}`)
+                                      setShowSearchResults(false)
+                                      setSearchQuery('')
+                                    }}
+                                    className="w-full text-left p-1.5 rounded hover:bg-muted/80 transition-colors flex justify-between items-center"
+                                  >
+                                    <div>
+                                      <p className="font-semibold">{d.name}</p>
+                                      <p className="text-[10px] text-muted-foreground">{d.employee_id}</p>
+                                    </div>
+                                    <span className="text-[9px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-medium capitalize">{d.status.toLowerCase()}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
