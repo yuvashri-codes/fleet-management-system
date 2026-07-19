@@ -24,3 +24,14 @@ class FleetModulePermission(permissions.BasePermission):
             return request.method in permissions.SAFE_METHODS or request.method in ['POST', 'PUT', 'PATCH']
             
         return False
+
+
+class IsAdminOrFleetManager(permissions.BasePermission):
+    """
+    Allows access only to Admin and Fleet Manager roles.
+    Drivers are completely blocked.
+    """
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return request.user.role in ['ADMIN', 'FLEET_MANAGER'] or request.user.is_superuser

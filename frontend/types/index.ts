@@ -87,3 +87,72 @@ export interface Driver {
   created_at: string
   updated_at: string
 }
+
+export type TripStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'DELAYED'
+
+export interface Trip {
+  id: number
+  trip_name: string
+  vehicle: MiniVehicle
+  driver: MiniDriver
+  source_location: string
+  destination: string
+  route: string
+  start_date: string
+  start_time: string
+  expected_end_date: string
+  actual_end_date: string | null
+  distance: number
+  estimated_duration: string
+  current_status: TripStatus
+  trip_cost: number
+  cargo_description: string
+  customer_name: string
+  customer_contact: string
+  notes: string
+  gps_coordinates: string
+  created_at: string
+  updated_at: string
+}
+
+export interface FuelLog {
+  id: number
+  vehicle: MiniVehicle
+  driver: MiniDriver
+  fuel_station: string
+  fuel_type: string
+  fuel_quantity: number
+  price_per_liter: number
+  total_cost: number
+  mileage: number
+  current_odometer: number
+  fuel_date: string
+  payment_method: string
+  receipt_upload: string | null
+  remarks: string
+  created_at: string
+}
+
+export type MaintenanceType = 'PREVENTIVE' | 'CORRECTIVE' | 'EMERGENCY' | 'INSPECTION'
+export type MaintenanceStatus = 'PENDING' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+export type MaintenancePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+
+export interface Maintenance {
+  id: number
+  vehicle: MiniVehicle
+  maintenance_type: MaintenanceType
+  service_center: string
+  service_engineer: string
+  description: string
+  issue_category: string
+  priority: MaintenancePriority
+  status: MaintenanceStatus
+  scheduled_date: string
+  completed_date: string | null
+  estimated_cost: number
+  actual_cost: number | null
+  invoice_upload: string | null
+  remarks: string
+  created_at: string
+  updated_at: string
+}

@@ -217,3 +217,103 @@ export const globalSearchService = {
     return response.data
   },
 }
+
+// Trip CRUD API Service
+export const tripService = {
+  async getAll(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/trips/', { params })
+    return response.data
+  },
+
+  async getById(id: number | string) {
+    const response = await api.get(`/api/trips/${id}/`)
+    return response.data
+  },
+
+  async create(data: Record<string, any>) {
+    const response = await api.post('/api/trips/', data)
+    return response.data
+  },
+
+  async update(id: number | string, data: Record<string, any>) {
+    const response = await api.put(`/api/trips/${id}/`, data)
+    return response.data
+  },
+
+  async delete(id: number | string) {
+    const response = await api.delete(`/api/trips/${id}/`)
+    return response.data
+  },
+}
+
+// Fuel Log CRUD API Service
+export const fuelService = {
+  async getAll(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/fuel/', { params })
+    return response.data
+  },
+
+  async getById(id: number | string) {
+    const response = await api.get(`/api/fuel/${id}/`)
+    return response.data
+  },
+
+  async create(data: FormData) {
+    const response = await api.post('/api/fuel/', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  async update(id: number | string, data: FormData) {
+    const response = await api.put(`/api/fuel/${id}/`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  async delete(id: number | string) {
+    const response = await api.delete(`/api/fuel/${id}/`)
+    return response.data
+  },
+}
+
+// Maintenance CRUD API Service
+export const maintenanceService = {
+  async getAll(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/maintenance/', { params })
+    return response.data
+  },
+
+  async getById(id: number | string) {
+    const response = await api.get(`/api/maintenance/${id}/`)
+    return response.data
+  },
+
+  async create(data: FormData) {
+    const response = await api.post('/api/maintenance/', data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  async update(id: number | string, data: FormData) {
+    const response = await api.put(`/api/maintenance/${id}/`, data, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  async delete(id: number | string) {
+    const response = await api.delete(`/api/maintenance/${id}/`)
+    return response.data
+  },
+}

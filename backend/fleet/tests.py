@@ -2,8 +2,8 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
-from datetime import date, timedelta
-from .models import Vehicle, Driver
+from datetime import date, timedelta, time
+from .models import Vehicle, Driver, Trip, FuelLog, Maintenance
 
 User = get_user_model()
 
@@ -32,6 +32,20 @@ class FleetAPITests(APITestCase):
             fuel_type='Electric',
             current_odometer=5000,
             capacity='20 Tons'
+        )
+
+        # Create driver profile matching driver_user email
+        self.driver_profile = Driver.objects.create(
+            employee_id='EMP-DRV-1',
+            name='Test Driver',
+            email='driver@fleet.com',
+            phone='555-0199',
+            license_number='DL-DRV-1',
+            license_expiry=date.today() + timedelta(days=200),
+            joining_date=date.today(),
+            experience=4,
+            emergency_contact='555-0100',
+            assigned_vehicle=self.vehicle
         )
 
     def test_unauthenticated_access_denied(self):
@@ -130,3 +144,103 @@ class FleetAPITests(APITestCase):
         # Verify the driver's vehicle reference updated
         driver.refresh_from_db()
         self.assertEqual(driver.assigned_vehicle, self.vehicle)
+
+    def test_driver_read_assigned_vehicle_only(self):
+        self.client.force_authenticate(user=self.driver_user)
+        # Create another vehicle unassigned to this driver
+        Vehicle.objects.create(
+            vehicle_number='TX-X', registration_number='REG-X', vin_number='VIN-X',
+            brand='Nissan', model='NV', vehicle_type='Van', manufacturing_year=2022,
+            fuel_type='Petrol', current_odometer=8000, capacity='2 Tons'
+        )
+        response = self.client.get(reverse('vehicle-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['vehicle_number'], 'TX-100')
+
+    def test_driver_own_trips_only(self):
+        # Create second driver
+        driver2 = Driver.objects.create(
+            employee_id='EMP-DRV-2', name='Driver 2', email='drv2@fleet.com', phone='555-0299',
+            license_number='DL-DRV-2', license_expiry=date.today(), joining_date=date.today(),
+            experience=2, emergency_contact='555-0200'
+        )
+        
+        # Create trip for driver_user
+        trip1 = Trip.objects.create(
+            trip_name='Trip 1', vehicle=self.vehicle, driver=self.driver_profile,
+            source_location='Austin', destination='Dallas', route='I-35',
+            start_date=date.today(), start_time=time(8, 0), expected_end_date=date.today(),
+            distance=200, estimated_duration='3 hours', trip_cost=150,
+            cargo_description='Box goods', customer_name='ACME Corp', customer_contact='555-0111'
+        )
+        
+        # Create trip for driver2
+        trip2 = Trip.objects.create(
+            trip_name='Trip 2', vehicle=self.vehicle, driver=driver2,
+            source_location='Houston', destination='Dallas', route='I-45',
+            start_date=date.today(), start_time=time(9, 0), expected_end_date=date.today(),
+            distance=240, estimated_duration='4 hours', trip_cost=200,
+            cargo_description='Raw material', customer_name='Globex', customer_contact='555-0222'
+        )
+
+        self.client.force_authenticate(user=self.driver_user)
+        response = self.client.get(reverse('trip-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['trip_name'], 'Trip 1')
+
+    def test_driver_trip_update_status_only(self):
+        trip = Trip.objects.create(
+            trip_name='Austin Cargo Run', vehicle=self.vehicle, driver=self.driver_profile,
+            source_location='Austin', destination='Dallas', route='I-35',
+            start_date=date.today(), start_time=time(8, 0), expected_end_date=date.today(),
+            distance=200, estimated_duration='3 hours', trip_cost=150,
+            cargo_description='Box goods', customer_name='ACME Corp', customer_contact='555-0111'
+        )
+        
+        self.client.force_authenticate(user=self.driver_user)
+        
+        # Succeeds: Update status to IN_PROGRESS
+        response = self.client.patch(reverse('trip-detail', args=[trip.id]), {
+            'current_status': 'IN_PROGRESS'
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+        # Fails: Attempting to modify destination
+        response = self.client.patch(reverse('trip-detail', args=[trip.id]), {
+            'destination': 'El Paso'
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_driver_blocked_from_fuel_and_maintenance(self):
+        self.client.force_authenticate(user=self.driver_user)
+        
+        response = self.client.get(reverse('fuel-list'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        
+        response = self.client.get(reverse('maintenance-list'))
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_trip_validation_dates(self):
+        self.client.force_authenticate(user=self.admin_user)
+        
+        response = self.client.post(reverse('trip-list'), {
+            'trip_name': 'Bad Dates Trip',
+            'vehicle_id': self.vehicle.id,
+            'driver_id': self.driver_profile.id,
+            'source_location': 'Austin',
+            'destination': 'Dallas',
+            'route': 'I-35',
+            'start_date': date.today(),
+            'start_time': '08:00:00',
+            'expected_end_date': date.today() - timedelta(days=2), # Bad expected end date
+            'distance': 200,
+            'estimated_duration': '3 hours',
+            'trip_cost': 100,
+            'cargo_description': 'Food items',
+            'customer_name': 'Heinz',
+            'customer_contact': '555-9999'
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('expected_end_date', response.data)

@@ -26,7 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname()
   
   const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState<{ vehicles: any[]; drivers: any[] } | null>(null)
+  const [searchResults, setSearchResults] = useState<{ vehicles: any[]; drivers: any[]; trips?: any[]; fuel?: any[]; maintenance?: any[] } | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [showSearchResults, setShowSearchResults] = useState(false)
 
@@ -107,9 +107,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', active: pathname === '/dashboard', disabled: false },
     { name: 'Vehicles', icon: Truck, href: '/dashboard/vehicles', active: pathname.startsWith('/dashboard/vehicles'), disabled: false },
     { name: 'Drivers', icon: Users, href: '/dashboard/drivers', active: pathname.startsWith('/dashboard/drivers'), disabled: false },
-    { name: 'Trips', icon: MapPin, href: '#', active: false, disabled: true },
-    { name: 'Fuel Management', icon: Flame, href: '#', active: false, disabled: true },
-    { name: 'Maintenance', icon: Wrench, href: '#', active: false, disabled: true },
+    { name: 'Trips', icon: MapPin, href: '/dashboard/trips', active: pathname.startsWith('/dashboard/trips'), disabled: false },
+    { name: 'Fuel Management', icon: Flame, href: '/dashboard/fuel', active: pathname.startsWith('/dashboard/fuel'), disabled: false },
+    { name: 'Maintenance', icon: Wrench, href: '/dashboard/maintenance', active: pathname.startsWith('/dashboard/maintenance'), disabled: false },
     { name: 'Reports', icon: FileText, href: '#', active: false, disabled: true },
     { name: 'Analytics', icon: BarChart3, href: '#', active: false, disabled: true },
     { name: 'Settings', icon: Settings, href: '#', active: false, disabled: true },
@@ -349,15 +349,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       exit={{ opacity: 0 }}
                       className="absolute left-0 right-0 top-full mt-2 rounded-xl border bg-card p-3 shadow-xl z-50 glass-panel max-h-80 overflow-y-auto w-80 text-xs text-foreground"
                     >
-                      {searchResults.vehicles.length === 0 && searchResults.drivers.length === 0 ? (
+                      {(searchResults.vehicles?.length === 0 && 
+                        searchResults.drivers?.length === 0 && 
+                        (searchResults.trips?.length || 0) === 0 && 
+                        (searchResults.fuel?.length || 0) === 0 && 
+                        (searchResults.maintenance?.length || 0) === 0) ? (
                         <p className="text-muted-foreground py-2 text-center">No results found</p>
                       ) : (
                         <div className="space-y-4">
-                          {searchResults.vehicles.length > 0 && (
+                          {searchResults.vehicles && searchResults.vehicles.length > 0 && (
                             <div>
                               <h5 className="font-bold text-primary mb-1 uppercase tracking-wider text-[10px]">Vehicles</h5>
                               <div className="space-y-1">
-                                {searchResults.vehicles.map((v) => (
+                                {searchResults.vehicles.map((v: any) => (
                                   <button
                                     key={v.id}
                                     onClick={() => {
@@ -378,11 +382,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </div>
                           )}
 
-                          {searchResults.drivers.length > 0 && (
+                          {searchResults.drivers && searchResults.drivers.length > 0 && (
                             <div>
                               <h5 className="font-bold text-accent mb-1 uppercase tracking-wider text-[10px]">Drivers</h5>
                               <div className="space-y-1">
-                                {searchResults.drivers.map((d) => (
+                                {searchResults.drivers.map((d: any) => (
                                   <button
                                     key={d.id}
                                     onClick={() => {
@@ -397,6 +401,81 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                       <p className="text-[10px] text-muted-foreground">{d.employee_id}</p>
                                     </div>
                                     <span className="text-[9px] bg-accent/10 text-accent px-1.5 py-0.5 rounded font-medium capitalize">{d.status.toLowerCase()}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {searchResults.trips && searchResults.trips.length > 0 && (
+                            <div>
+                              <h5 className="font-bold text-emerald-500 mb-1 uppercase tracking-wider text-[10px]">Trips</h5>
+                              <div className="space-y-1">
+                                {searchResults.trips.map((t: any) => (
+                                  <button
+                                    key={t.id}
+                                    onClick={() => {
+                                      router.push(`/dashboard/trips/${t.id}`)
+                                      setShowSearchResults(false)
+                                      setSearchQuery('')
+                                    }}
+                                    className="w-full text-left p-1.5 rounded hover:bg-muted/80 transition-colors flex justify-between items-center"
+                                  >
+                                    <div>
+                                      <p className="font-semibold">{t.trip_name}</p>
+                                      <p className="text-[10px] text-muted-foreground">{t.source_location} → {t.destination}</p>
+                                    </div>
+                                    <span className="text-[9px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded font-medium capitalize">{t.current_status.replace('_', ' ').toLowerCase()}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {searchResults.fuel && searchResults.fuel.length > 0 && (
+                            <div>
+                              <h5 className="font-bold text-amber-500 mb-1 uppercase tracking-wider text-[10px]">Fuel Logs</h5>
+                              <div className="space-y-1">
+                                {searchResults.fuel.map((f: any) => (
+                                  <button
+                                    key={f.id}
+                                    onClick={() => {
+                                      router.push('/dashboard/fuel')
+                                      setShowSearchResults(false)
+                                      setSearchQuery('')
+                                    }}
+                                    className="w-full text-left p-1.5 rounded hover:bg-muted/80 transition-colors flex justify-between items-center"
+                                  >
+                                    <div>
+                                      <p className="font-semibold">{f.vehicle.brand} {f.vehicle.model}</p>
+                                      <p className="text-[10px] text-muted-foreground">{f.fuel_station} • {f.fuel_date}</p>
+                                    </div>
+                                    <span className="text-[9px] bg-amber-500/10 text-amber-500 px-1.5 py-0.5 rounded font-medium">${Number(f.total_cost).toLocaleString()}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {searchResults.maintenance && searchResults.maintenance.length > 0 && (
+                            <div>
+                              <h5 className="font-bold text-rose-500 mb-1 uppercase tracking-wider text-[10px]">Maintenance</h5>
+                              <div className="space-y-1">
+                                {searchResults.maintenance.map((m: any) => (
+                                  <button
+                                    key={m.id}
+                                    onClick={() => {
+                                      router.push(`/dashboard/maintenance/${m.id}`)
+                                      setShowSearchResults(false)
+                                      setSearchQuery('')
+                                    }}
+                                    className="w-full text-left p-1.5 rounded hover:bg-muted/80 transition-colors flex justify-between items-center"
+                                  >
+                                    <div>
+                                      <p className="font-semibold">{m.vehicle.brand} {m.vehicle.model}</p>
+                                      <p className="text-[10px] text-muted-foreground">{m.service_center} • {m.scheduled_date}</p>
+                                    </div>
+                                    <span className="text-[9px] bg-rose-500/10 text-rose-500 px-1.5 py-0.5 rounded font-medium capitalize">{m.status.toLowerCase()}</span>
                                   </button>
                                 ))}
                               </div>

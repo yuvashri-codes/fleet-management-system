@@ -1,6 +1,6 @@
-# FleetGuard - Enterprise Fleet Management System (Sprint 1)
+# FleetGuard - Enterprise Fleet Management System (Sprint 3)
 
-Welcome to Sprint 1 of the enterprise-grade Fleet Management System (**FleetGuard**). This repository contains the foundation, database schemas, API models, JWT authentication framework, and responsive Dashboard UI.
+Welcome to Sprint 3 of the enterprise-grade Fleet Management System (**FleetGuard**). This repository contains the foundation, database schemas, API models, JWT role permissions framework, responsive dashboards, and CRUD pages.
 
 ---
 
@@ -15,75 +15,160 @@ Fleet-Final/
 │   └── requirements.txt      # Flask dependencies
 ├── backend/                  # Django REST Framework (Backend Core)
 │   ├── accounts/             # Authentication & User Management app
-│   │   ├── management/       # Seeding commands
-│   │   │   └── commands/
-│   │   │       └── seed_admin.py
 │   │   ├── migrations/       # Database migrations
 │   │   ├── models.py         # Custom User model (Admin, Manager, Driver)
 │   │   ├── serializers.py    # Custom User & Token payload serializers
 │   │   ├── urls.py           # Authentication routing
-│   │   ├── views.py          # DRF views (Register, Login, Profile, Logout)
-│   │   └── apps.py
+│   │   └── views.py          # DRF views (Register, Login, Profile, Logout)
 │   ├── config/               # Settings & routing configuration
 │   │   ├── settings.py
 │   │   └── urls.py
-│   ├── core/                 # Shared core utilities (future sprints)
-│   ├── dashboard/            # Backend dashboard logic (future sprints)
+│   ├── fleet/                # Fleet Management App (Vehicles, Drivers, Trips, Fuel, Maintenance)
+│   │   ├── migrations/       # Database migrations (including Sprint 3 models)
+│   │   ├── models.py         # Vehicle, Driver, Trip, FuelLog, Maintenance models
+│   │   ├── serializers.py    # Serializers with strict validations & relationships
+│   │   ├── permissions.py    # Custom Role-Based Access Control permissions
+│   │   ├── tests.py          # Comprehensive API unit and integration tests
+│   │   ├── urls.py           # ViewSet routers configuration
+│   │   └── views.py          # ViewSet logic, filters, sorting & search views
 │   ├── manage.py             # Django admin CLI
 │   └── requirements.txt      # Django dependencies
 └── frontend/                 # Next.js 15 App Router (Frontend)
     ├── app/                  # App routes & layout entry
     │   ├── dashboard/        # Dashboard layout & content
-    │   │   ├── layout.tsx
-    │   │   └── page.tsx
+    │   │   ├── layout.tsx    # Collapsible sidebar, profile controls & global search dropdown
+    │   │   ├── page.tsx      # Main KPIs dashboard (Trips, Costs, Utilization, Schedules)
+    │   │   ├── vehicles/     # Vehicles directory & detail profiles
+    │   │   ├── drivers/      # Drivers directory & profiles with license warnings
+    │   │   ├── trips/        # Trips scheduling CRUD & journey details timeline
+    │   │   ├── fuel/         # Fuel logs CRUD, monthly costs & responsive SVG trends
+    │   │   └── maintenance/  # Maintenance calendar schedules & invoice logs
     │   ├── login/            # Interactive Login page
-    │   │   └── page.tsx
     │   ├── register/         # Form validation Register page
-    │   │   └── page.tsx
-    │   ├── layout.tsx        # Global html layout & query client
-    │   ├── loading.tsx       # Routing loaders
-    │   ├── not-found.tsx     # Custom 404 page
-    │   ├── page.tsx          # Client-side router gateway
     │   └── providers.tsx     # TanStack Query & Toast providers
     ├── components/           # Reusable UI component library
-    │   └── ui/
-    │       ├── button.tsx
-    │       ├── card.tsx
-    │       ├── checkbox.tsx
-    │       ├── input.tsx
-    │       ├── select.tsx
-    │       ├── skeleton.tsx
-    │       └── toast.tsx
+    │   └── ui/               # Custom workspace wrappers (Button, Modal, Select, Input, Skeleton, Toast)
     ├── lib/                  # Utility libraries & Axios clients
-    │   ├── api.ts            # JWT auto-refresh interceptors
+    │   ├── api.ts            # JWT auto-refresh interceptors & CRUD API services
     │   └── utils.ts          # Styling helper
     ├── package.json          # Next.js dependencies & scripts
-    ├── postcss.config.mjs    # CSS configuration
     └── tsconfig.json         # TypeScript compiler preferences
 ```
 
 ---
 
-## 2. PostgreSQL Database Setup
+## 2. Database Schema
 
-1. **Install PostgreSQL**: Ensure PostgreSQL 14+ is installed and running on your system.
-2. **Create Database**: Open `psql` or pgAdmin and run:
-   ```sql
-   CREATE DATABASE fleetguard_db;
-   ```
-3. **Configure Environment Variables**:
-   Create a `.env` file in the project root directory by copying the template:
-   ```bash
-   cp .env.example .env
-   ```
-   Open `.env` and fill in your local database credentials:
-   ```text
-   DB_NAME=fleetguard_db
-   DB_USER=postgres
-   DB_PASSWORD=your_secure_password
-   DB_HOST=localhost
-   DB_PORT=5432
-   ```
+The system uses a PostgreSQL database with a custom accounts schema and relationships:
+
+```mermaid
+erDiagram
+    accounts_User ||--o| fleet_Driver : "identifies by email"
+    fleet_Vehicle ||--o| fleet_Driver : "1:1 assignment relation"
+    fleet_Vehicle ||--o{ fleet_Trip : "references (1:N)"
+    fleet_Driver ||--o{ fleet_Trip : "references (1:N)"
+    fleet_Vehicle ||--o{ fleet_FuelLog : "references (1:N)"
+    fleet_Driver ||--o{ fleet_FuelLog : "references (1:N)"
+    fleet_Vehicle ||--o{ fleet_Maintenance : "references (1:N)"
+
+    fleet_Vehicle {
+        int id PK
+        string vehicle_number UK "Indexed"
+        string registration_number UK "Indexed"
+        string vin_number UK "Indexed"
+        string brand
+        string model
+        string vehicle_type "Indexed"
+        int manufacturing_year
+        date purchase_date
+        string insurance_number
+        date insurance_expiry
+        date rc_expiry
+        string fuel_type "Indexed"
+        float mileage
+        int current_odometer
+        string capacity
+        string status "Indexed"
+        string image
+        text notes
+    }
+
+    fleet_Driver {
+        int id PK
+        string employee_id UK "Indexed"
+        string name
+        string profile_photo
+        string email UK "Indexed"
+        string phone
+        string license_number UK "Indexed"
+        date license_expiry "Indexed"
+        date joining_date
+        int experience
+        text address
+        string emergency_contact
+        string blood_group
+        int assigned_vehicle_id FK
+        string status "Indexed"
+    }
+
+    fleet_Trip {
+        int id PK
+        string trip_name
+        int vehicle_id FK
+        int driver_id FK
+        string source_location
+        string destination
+        text route
+        date start_date "Indexed"
+        time start_time
+        date expected_end_date
+        date actual_end_date
+        decimal distance
+        string estimated_duration
+        string current_status "Indexed"
+        decimal trip_cost
+        text cargo_description
+        string customer_name
+        string customer_contact
+        text notes
+        string gps_coordinates
+    }
+
+    fleet_FuelLog {
+        int id PK
+        int vehicle_id FK
+        int driver_id FK
+        string fuel_station
+        string fuel_type "Indexed"
+        decimal fuel_quantity
+        decimal price_per_liter
+        decimal total_cost
+        float mileage
+        int current_odometer
+        date fuel_date "Indexed"
+        string payment_method
+        string receipt_upload
+        text remarks
+    }
+
+    fleet_Maintenance {
+        int id PK
+        int vehicle_id FK
+        string maintenance_type "Indexed"
+        string service_center
+        string service_engineer
+        text description
+        string issue_category
+        string priority "Indexed"
+        string status "Indexed"
+        date scheduled_date "Indexed"
+        date completed_date
+        decimal estimated_cost
+        decimal actual_cost
+        string invoice_upload
+        text remarks
+    }
+```
 
 ---
 
@@ -94,21 +179,21 @@ Fleet-Final/
    ```bash
    cd backend
    ```
-2. Create a Python virtual environment:
+2. Create and activate a Python virtual environment:
    ```bash
    python -m venv venv
+   # Windows CMD:
+   venv\Scripts\activate.bat
+   # macOS/Linux:
+   source venv/bin/activate
    ```
-3. Activate the virtual environment:
-   - **Windows PowerShell**: `.\venv\Scripts\Activate.ps1`
-   - **Windows CMD**: `.\venv\Scripts\activate.bat`
-   - **macOS/Linux**: `source venv/bin/activate`
-4. Install python dependencies:
+3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
 ### Frontend Setup
-1. Open a terminal and navigate to the `frontend/` directory:
+1. Navigate to the `frontend/` directory:
    ```bash
    cd frontend
    ```
@@ -117,96 +202,80 @@ Fleet-Final/
    npm install
    ```
 
-### Analytics Setup
-1. Open a terminal and navigate to the `analytics/` directory:
-   ```bash
-   cd analytics
-   ```
-2. Create a Python virtual environment:
-   ```bash
-   python -m venv venv
-   ```
-3. Activate the virtual environment:
-   - **Windows PowerShell**: `.\venv\Scripts\Activate.ps1`
-   - **macOS/Linux**: `source venv/bin/activate`
-4. Install python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
 ---
 
 ## 4. Run Commands
 
 ### Run Backend (Django)
-Ensure you are in the `backend/` folder and your virtual environment is activated:
-1. **Generate Migrations**:
-   ```bash
-   python manage.py makemigrations accounts
-   ```
-2. **Execute Migrations**:
+1. **Apply migrations**:
    ```bash
    python manage.py migrate
    ```
-3. **Seed Admin Account**:
-   To create the default administrator user (`admin@fleetmanagement.com` with password `AdminPassword123!`):
+2. **Seed Admin**:
    ```bash
    python manage.py seed_admin
    ```
-4. **Start Dev Server**:
+3. **Start backend**:
    ```bash
-   python manage.py runserver 8000
+   python manage.py runserver
    ```
 
 ### Run Frontend (Next.js)
-Ensure you are in the `frontend/` folder:
-1. **Start Dev Server**:
-   ```bash
-   npm run dev
-   ```
-   *The client will start running at `http://localhost:3000`.*
-
-### Run Analytics (Flask)
-Ensure you are in the `analytics/` folder and your virtual environment is activated:
-1. **Start Microservice**:
-   ```bash
-   python app.py
-   ```
-   *The server will start running at `http://localhost:5001`.*
+```bash
+npm run dev
+```
 
 ---
 
 ## 5. API Endpoints Summary
 
-All request payloads and response bodies utilize clean, REST-compliant JSON formatting.
-
+### Authentication APIs
 | Method | Endpoint | Auth | Description | Payload Schema |
 | :--- | :--- | :--- | :--- | :--- |
 | **POST** | `/api/auth/register` | AllowAny | Creates user and signs in immediately | `{"fullName", "email", "password", "confirm_password", "role"}` |
 | **POST** | `/api/auth/login` | AllowAny | Obtains JWT access & refresh tokens | `{"email", "password"}` |
 | **POST** | `/api/auth/refresh` | AllowAny | Obtains fresh access token via refresh token | `{"refresh"}` |
 | **POST** | `/api/auth/logout` | IsAuthenticated | Blacklists refresh token | `{"refresh"}` |
-| **GET** | `/api/auth/profile` | IsAuthenticated | Retrieves details of authenticated user | *None (Requires Bearer Token header)* |
+| **GET** | `/api/auth/profile` | IsAuthenticated | Retrieves details of authenticated user | *None* |
+
+### Fleet Core APIs (Vehicles & Drivers)
+| Method | Endpoint | Auth | Role restrictions | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/vehicles/` | IsAuthenticated | Driver (filtered to own) | Lists active vehicles |
+| **POST** | `/api/vehicles/` | IsAuthenticated | Admin / Fleet Manager | Creates vehicle record |
+| **GET** | `/api/vehicles/{id}/` | IsAuthenticated | Driver (filtered to own) | Retrieves vehicle details |
+| **PUT** | `/api/vehicles/{id}/` | IsAuthenticated | Admin / Fleet Manager | Updates vehicle record |
+| **DELETE** | `/api/vehicles/{id}/` | IsAuthenticated | Admin Only | Deletes vehicle record |
+| **GET** | `/api/drivers/` | IsAuthenticated | Driver (filtered to own) | Lists drivers |
+| **POST** | `/api/drivers/` | IsAuthenticated | Admin / Fleet Manager | Registers operator profile |
+| **PUT** | `/api/drivers/{id}/` | IsAuthenticated | Admin / Fleet Manager | Updates operator profile |
+
+### Transit Operations APIs (Trips, Fuel, Maintenance)
+| Method | Endpoint | Auth | Role restrictions | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/trips/` | IsAuthenticated | Driver (filtered to own) | Lists scheduled trips |
+| **POST** | `/api/trips/` | IsAuthenticated | Admin / Fleet Manager | Schedules new trip |
+| **PUT** | `/api/trips/{id}/` | IsAuthenticated | Driver (status-only), Manager (all) | Updates trip parameters |
+| **DELETE** | `/api/trips/{id}/` | IsAuthenticated | Admin / Fleet Manager | Cancels and deletes trip |
+| **GET** | `/api/fuel/` | IsAuthenticated | Admin / Fleet Manager | Lists refueling ledger logs |
+| **POST** | `/api/fuel/` | IsAuthenticated | Admin / Fleet Manager | Records fuel refueling event |
+| **GET** | `/api/maintenance/` | IsAuthenticated | Admin / Fleet Manager | Lists scheduled maintenance |
+| **POST** | `/api/maintenance/` | IsAuthenticated | Admin / Fleet Manager | Schedules repair ticket |
 
 ---
 
 ## 6. Testing Instructions
 
 ### Django API Validation
-To execute automated test suites built inside Django verifying endpoint security and role validators:
+To execute the automated unit and integration tests verifying date/cost validations, status checks, and role permissions:
 ```bash
 cd backend
-python manage.py test
+python manage.py test fleet
 ```
 
 ### Next.js Compile Verification
-To compile-check all routes, components, and schemas:
+To compile-check all routes, component bindings, and types:
 ```bash
 cd frontend
 npm run build
 ```
-
-### Analytics Service Check
-To inspect the health of the Flask microservice, run:
-- **cURL**: `curl http://localhost:5001/health`
-- **Response**: `{"status": "running"}`

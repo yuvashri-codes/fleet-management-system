@@ -1,19 +1,32 @@
 'use client';
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Truck, Users, MapPin, Flame, Wrench, HeartPulse, 
-  RefreshCw, AlertTriangle, CheckCircle, Info
+  RefreshCw, AlertTriangle, CheckCircle, Info, Calendar, DollarSign
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { vehicleService, driverService } from '@/lib/api'
+import { vehicleService, driverService, tripService, fuelService, maintenanceService } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Vehicle, Driver } from '@/types'
+import { Vehicle, Driver, Trip, FuelLog, Maintenance } from '@/types'
 
 export default function DashboardPage() {
+  const [currentUser, setCurrentUser] = useState<any>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userStr = localStorage.getItem('user')
+      if (userStr) {
+        setCurrentUser(JSON.parse(userStr))
+      }
+    }
+  }, [])
+
+  const isDriverUser = currentUser?.role === 'DRIVER'
+
   // Fetch real vehicles data
   const { 
     data: vehiclesData, 
@@ -36,30 +49,85 @@ export default function DashboardPage() {
     queryFn: () => driverService.getAll({ page_size: 100 })
   })
 
-  const isLoading = isVehiclesLoading || isDriversLoading
-  const isRefetching = isVehiclesRefetching || isDriversRefetching
+  // Fetch real trips data
+  const {
+    data: tripsData,
+    isLoading: isTripsLoading,
+    refetch: refetchTrips,
+    isRefetching: isTripsRefetching
+  } = useQuery({
+    queryKey: ['trips-dashboard'],
+    queryFn: () => tripService.getAll({ page_size: 100 })
+  })
+
+  // Fetch real fuel data (disabled for drivers)
+  const {
+    data: fuelData,
+    isLoading: isFuelLoading,
+    refetch: refetchFuel,
+    isRefetching: isFuelRefetching
+  } = useQuery({
+    queryKey: ['fuel-dashboard'],
+    queryFn: () => fuelService.getAll({ page_size: 100 }),
+    enabled: !!currentUser && !isDriverUser
+  })
+
+  // Fetch real maintenance data (disabled for drivers)
+  const {
+    data: maintenanceData,
+    isLoading: isMaintenanceLoading,
+    refetch: refetchMaintenance,
+    isRefetching: isMaintenanceRefetching
+  } = useQuery({
+    queryKey: ['maintenance-dashboard'],
+    queryFn: () => maintenanceService.getAll({ page_size: 100 }),
+    enabled: !!currentUser && !isDriverUser
+  })
+
+  const isLoading = isVehiclesLoading || isDriversLoading || isTripsLoading || 
+                    (!isDriverUser && (isFuelLoading || isMaintenanceLoading))
+
+  const isRefetching = isVehiclesRefetching || isDriversRefetching || isTripsRefetching ||
+                       (!isDriverUser && (isFuelRefetching || isMaintenanceRefetching))
 
   const handleRefresh = () => {
     refetchVehicles()
     refetchDrivers()
+    refetchTrips()
+    if (!isDriverUser) {
+      refetchFuel()
+      refetchMaintenance()
+    }
   }
 
   const vehicles: Vehicle[] = vehiclesData?.results || []
   const drivers: Driver[] = driversData?.results || []
+  const trips: Trip[] = tripsData?.results || []
+  const fuelLogs: FuelLog[] = fuelData?.results || []
+  const maintenances: Maintenance[] = maintenanceData?.results || []
 
-  // Calculate vehicle states
+  // 1. Vehicles Utilization Metrics
   const totalVehiclesCount = vehiclesData?.count || vehicles.length
   const availableVehicles = vehicles.filter(v => v.status === 'AVAILABLE').length
   const inUseVehicles = vehicles.filter(v => v.status === 'IN_USE').length
   const maintenanceVehicles = vehicles.filter(v => v.status === 'MAINTENANCE').length
-  const inactiveVehicles = vehicles.filter(v => v.status === 'INACTIVE').length
+  const vehicleUtilization = totalVehiclesCount > 0 ? Math.round((inUseVehicles / totalVehiclesCount) * 100) : 0
 
-  // Calculate driver states
+  // 2. Drivers
   const totalDriversCount = driversData?.count || drivers.length
-  const activeDrivers = drivers.filter(d => d.status === 'ACTIVE').length
-  const inactiveDrivers = drivers.filter(d => d.status === 'INACTIVE').length
-  const suspendedDrivers = drivers.filter(d => d.status === 'SUSPENDED').length
-  const driverUtilization = totalDriversCount > 0 ? Math.round((activeDrivers / totalDriversCount) * 100) : 0
+
+  // 3. Trips stats
+  const totalTripsCount = tripsData?.count || trips.length
+  const runningTrips = trips.filter(t => t.current_status === 'IN_PROGRESS').length
+  const completedTrips = trips.filter(t => t.current_status === 'COMPLETED').length
+  const scheduledTrips = trips.filter(t => t.current_status === 'SCHEDULED').length
+
+  // 4. Financial Sums (Fuel & Maintenance)
+  const totalFuelCost = isDriverUser ? 12450 : fuelLogs.reduce((sum, log) => sum + Number(log.total_cost), 0)
+  const totalMaintenanceCost = isDriverUser ? 3210 : maintenances.reduce((sum, m) => sum + Number(m.actual_cost || m.estimated_cost), 0)
+
+  // 5. Maintenance reminders
+  const upcomingMaintenance = isDriverUser ? 2 : maintenances.filter(m => m.status === 'PENDING' || m.status === 'SCHEDULED').length
 
   // Animated Container Variants
   const containerVariants = {
@@ -77,77 +145,72 @@ export default function DashboardPage() {
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } }
   }
 
-  // Dashboard Stats Grid layout
+  // Dashboard Stats Grid
   const stats = [
     {
-      title: "Total Vehicles",
-      value: String(totalVehiclesCount),
-      description: `${inUseVehicles} In Use • ${availableVehicles} Available • ${maintenanceVehicles} Down`,
-      icon: Truck,
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
-      trend: `${availableVehicles + inUseVehicles} Active Status`,
-      trendType: "up"
-    },
-    {
-      title: "Active Drivers",
-      value: String(totalDriversCount),
-      description: `${activeDrivers} Active • ${inactiveDrivers} Inactive • ${suspendedDrivers} Suspended`,
-      icon: Users,
-      color: "text-accent",
-      bg: "bg-accent/10",
-      trend: `${driverUtilization}% utilization`,
-      trendType: "up"
-    },
-    {
-      title: "Trips Today",
-      value: "245",
-      description: "210 Completed • 35 In Progress",
+      title: "Trips Registry",
+      value: String(totalTripsCount),
+      description: `${runningTrips} In Progress • ${completedTrips} Completed • ${scheduledTrips} Scheduled`,
       icon: MapPin,
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
-      trend: "+12% vs yesterday",
+      trend: `${runningTrips} Active Runs`,
       trendType: "up"
     },
     {
-      title: "Fuel Cost",
-      value: "$12,450",
-      description: "Daily average: $11,890",
+      title: "Vehicle Utilization",
+      value: `${vehicleUtilization}%`,
+      description: `${inUseVehicles} of ${totalVehiclesCount} Vehicles Active`,
+      icon: Truck,
+      color: "text-blue-500",
+      bg: "bg-blue-500/10",
+      trend: `${availableVehicles} Idle / Available`,
+      trendType: "up"
+    },
+    {
+      title: "Active Operators",
+      value: String(totalDriversCount),
+      description: `Utilization rating based on active allocations`,
+      icon: Users,
+      color: "text-accent",
+      bg: "bg-accent/10",
+      trend: `${totalDriversCount} Enrolled`,
+      trendType: "up"
+    },
+    {
+      title: "Fuel Ledger",
+      value: `$${totalFuelCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      description: isDriverUser ? "Simulated Driver metric" : `Calculated across ${fuelLogs.length} refueling logs`,
       icon: Flame,
       color: "text-amber-500",
       bg: "bg-amber-500/10",
-      trend: "+4.2% price surge",
+      trend: isDriverUser ? "Telemetry Lock" : "Cost Sum",
       trendType: "down"
     },
     {
-      title: "Maintenance Cost",
-      value: "$3,210",
-      description: "2 Major service operations pending",
+      title: "Maintenance Costs",
+      value: `$${totalMaintenanceCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      description: isDriverUser ? "Simulated Driver metric" : `Calculated across ${maintenances.length} service logs`,
       icon: Wrench,
       color: "text-rose-500",
       bg: "bg-rose-500/10",
-      trend: "-12% vs last month",
+      trend: `${upcomingMaintenance} Upcoming schedules`,
       trendType: "up"
     },
     {
-      title: "Fleet Health",
-      value: "94.8%",
-      description: "Target metric benchmark: 95.0%",
-      icon: HeartPulse,
+      title: "Upcoming Services",
+      value: String(upcomingMaintenance),
+      description: "Preventive and corrective tasks scheduled",
+      icon: Calendar,
       color: "text-indigo-500",
       bg: "bg-indigo-500/10",
-      trend: "+0.5% optimization",
+      trend: "Pending action",
       trendType: "up"
     }
   ]
 
-  // Mock Telemetry Activities
-  const recentEvents = [
-    { id: 1, type: 'warning', title: 'Speed Limit Violations', desc: 'Driver #28 (Vehicle #TX-293) exceeded 80mph on I-35', time: '12m ago' },
-    { id: 2, type: 'success', title: 'Scheduled Service Completed', desc: 'Vehicle #NY-902 completed 50k miles inspection', time: '45m ago' },
-    { id: 3, type: 'info', title: 'Geofence Exit Detected', desc: 'Vehicle #CA-112 departed Dallas Hub Terminal', time: '1h ago' },
-    { id: 4, type: 'info', title: 'Dispatch Plan Created', desc: 'Trip #2039 assigned to driver Robert M.', time: '2h ago' }
-  ]
+  // Recent Trips list (Limit to 4)
+  const recentTrips = trips.slice(0, 4)
 
   return (
     <div className="space-y-6">
@@ -243,7 +306,7 @@ export default function DashboardPage() {
                     </CardHeader>
                     
                     <CardContent>
-                      <div className="text-3xl font-extrabold tracking-tight mb-1">
+                      <div className="text-3xl font-extrabold tracking-tight mb-1 truncate">
                         {stat.value}
                       </div>
                       <p className="text-xs text-muted-foreground mb-3 truncate">
@@ -269,33 +332,42 @@ export default function DashboardPage() {
           {/* Bottom Grid: Live Activity Feed & Operational Gauges */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* Live activity log */}
+            {/* Live activity log - Recent Trips */}
             <motion.div variants={cardVariants} className="lg:col-span-2">
               <Card className="border bg-card shadow-sm h-full flex flex-col justify-between">
                 <CardHeader>
-                  <CardTitle className="text-base font-bold">Recent Telemetry Events</CardTitle>
-                  <CardDescription>Live notifications received from vehicle GPS hubs.</CardDescription>
+                  <CardTitle className="text-base font-bold">Recent Dispatch Trips</CardTitle>
+                  <CardDescription>Recently recorded dispatch cargo routes and status trackers.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {recentEvents.map((evt) => (
-                    <div 
-                      key={evt.id} 
-                      className="flex items-start justify-between p-3 rounded-xl border bg-muted/30 hover:bg-muted/50 transition-all text-xs"
-                    >
-                      <div className="flex gap-3">
-                        <div className="mt-0.5">
-                          {evt.type === 'warning' && <AlertTriangle className="h-4 w-4 text-amber-500" />}
-                          {evt.type === 'success' && <CheckCircle className="h-4 w-4 text-emerald-500" />}
-                          {evt.type === 'info' && <Info className="h-4 w-4 text-primary" />}
-                        </div>
-                        <div>
-                          <p className="font-bold">{evt.title}</p>
-                          <p className="text-muted-foreground mt-0.5">{evt.desc}</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-4">{evt.time}</span>
+                  {recentTrips.length === 0 ? (
+                    <div className="text-center py-10 text-xs text-muted-foreground">
+                      No trips registered in the system database.
                     </div>
-                  ))}
+                  ) : (
+                    recentTrips.map((trip) => (
+                      <div 
+                        key={trip.id} 
+                        className="flex items-start justify-between p-3 rounded-xl border bg-muted/30 hover:bg-muted/50 transition-all text-xs cursor-pointer"
+                        onClick={() => window.location.href = `/dashboard/trips/${trip.id}`}
+                      >
+                        <div className="flex gap-3 overflow-hidden">
+                          <div className="mt-0.5">
+                            <MapPin className="h-4 w-4 text-emerald-500" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="font-bold text-foreground truncate">{trip.trip_name}</p>
+                            <p className="text-muted-foreground mt-0.5 truncate">
+                              Route: {trip.source_location} ➔ {trip.destination} • Vehicle: {trip.vehicle.vehicle_number}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold uppercase whitespace-nowrap ml-4">
+                          {trip.current_status.replace('_', ' ').toLowerCase()}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
@@ -304,7 +376,7 @@ export default function DashboardPage() {
             <motion.div variants={cardVariants}>
               <Card className="border bg-card shadow-sm h-full flex flex-col justify-between">
                 <CardHeader>
-                  <CardTitle className="text-base font-bold">Operational Performance</CardTitle>
+                  <CardTitle className="text-base font-bold">Fleet Telemetry Performance</CardTitle>
                   <CardDescription>Fleet reliability parameters.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
