@@ -317,3 +317,56 @@ export const maintenanceService = {
     return response.data
   },
 }
+
+// Analytics and KPI Dashboard API Service
+export const analyticsService = {
+  async getStats(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/dashboard/', { params })
+    return response.data
+  },
+  async getKPIs() {
+    const response = await api.get('/api/dashboard/kpi/')
+    return response.data
+  },
+  async getCharts() {
+    const response = await api.get('/api/dashboard/charts/')
+    return response.data
+  },
+  async getRecentActivities() {
+    const response = await api.get('/api/dashboard/recent-activities/')
+    return response.data
+  },
+  async getNotifications() {
+    const response = await api.get('/api/dashboard/notifications/')
+    return response.data
+  }
+}
+
+// Business Intelligence Reports API Service
+export const reportsService = {
+  async getFleetReport(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/reports/fleet/', { params })
+    return response.data
+  },
+  async getVehicleReport(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/reports/vehicle/', { params })
+    return response.data
+  },
+  async getDriverReport(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/reports/driver/', { params })
+    return response.data
+  },
+  async getTripsReport(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/reports/trips/', { params })
+    return response.data
+  },
+  async getFuelReport(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/reports/fuel/', { params })
+    return response.data
+  },
+  async getMaintenanceReport(params?: Record<string, string | number | boolean>) {
+    const response = await api.get('/api/reports/maintenance/', { params })
+    return response.data
+  }
+}
+

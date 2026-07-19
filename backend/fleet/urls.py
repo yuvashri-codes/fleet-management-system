@@ -2,7 +2,11 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     VehicleViewSet, DriverViewSet, GlobalSearchView,
-    TripViewSet, FuelLogViewSet, MaintenanceViewSet
+    TripViewSet, FuelLogViewSet, MaintenanceViewSet,
+    DashboardStatsView, DashboardKPIView, DashboardChartsView,
+    DashboardRecentActivitiesView, DashboardNotificationsView,
+    FleetReportView, VehicleReportView, DriverReportView,
+    TripsReportView, FuelReportView, MaintenanceReportView
 )
 
 router = DefaultRouter()
@@ -14,5 +18,16 @@ router.register(r'maintenance', MaintenanceViewSet, basename='maintenance')
 
 urlpatterns = [
     path('global-search/', GlobalSearchView.as_view(), name='global-search'),
+    path('dashboard/', DashboardStatsView.as_view(), name='dashboard-stats'),
+    path('dashboard/kpi/', DashboardKPIView.as_view(), name='dashboard-kpi'),
+    path('dashboard/charts/', DashboardChartsView.as_view(), name='dashboard-charts'),
+    path('dashboard/recent-activities/', DashboardRecentActivitiesView.as_view(), name='dashboard-recent-activities'),
+    path('dashboard/notifications/', DashboardNotificationsView.as_view(), name='dashboard-notifications'),
+    path('reports/fleet/', FleetReportView.as_view(), name='report-fleet'),
+    path('reports/vehicle/', VehicleReportView.as_view(), name='report-vehicle'),
+    path('reports/driver/', DriverReportView.as_view(), name='report-driver'),
+    path('reports/trips/', TripsReportView.as_view(), name='report-trips'),
+    path('reports/fuel/', FuelReportView.as_view(), name='report-fuel'),
+    path('reports/maintenance/', MaintenanceReportView.as_view(), name='report-maintenance'),
     path('', include(router.urls)),
 ]

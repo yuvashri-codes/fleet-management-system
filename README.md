@@ -262,6 +262,21 @@ npm run dev
 | **GET** | `/api/maintenance/` | IsAuthenticated | Admin / Fleet Manager | Lists scheduled maintenance |
 | **POST** | `/api/maintenance/` | IsAuthenticated | Admin / Fleet Manager | Schedules repair ticket |
 
+### Business Intelligence & Analytics APIs (Sprint 4)
+| Method | Endpoint | Auth | Role restrictions | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **GET** | `/api/dashboard/` | IsAuthenticated | Driver (filtered to own) | Retrieves general stats, health indices, active vehicles and expiries |
+| **GET** | `/api/dashboard/kpi/` | IsAuthenticated | Driver (filtered to own) | Retrieves performance KPIs (Repair costs, distances, cost per KM) |
+| **GET** | `/api/dashboard/charts/` | IsAuthenticated | Driver (filtered to own) | Retrieves aggregated charts trends for monthly metrics and status maps |
+| **GET** | `/api/dashboard/recent-activities/` | IsAuthenticated | Driver (filtered to own) | Retrieves chronological feed of recent events |
+| **GET** | `/api/dashboard/notifications/` | IsAuthenticated | Driver (filtered to own) | Retrieves warning flags (insurances, licenses, maintenance) |
+| **GET** | `/api/reports/fleet/` | IsAuthenticated | Driver (filtered to own) | Retrieves overall fleet statistics table rows |
+| **GET** | `/api/reports/vehicle/` | IsAuthenticated | Driver (filtered to own) | Retrieves filtered vehicles inventory report rows |
+| **GET** | `/api/reports/driver/` | IsAuthenticated | Driver (filtered to own) | Retrieves filtered driver operator rosters |
+| **GET** | `/api/reports/trips/` | IsAuthenticated | Driver (filtered to own) | Retrieves trip dispatch logs spreadsheet |
+| **GET** | `/api/reports/fuel/` | IsAuthenticated | Driver (filtered to own) | Retrieves refueling logs transactions ledger |
+| **GET** | `/api/reports/maintenance/` | IsAuthenticated | Driver (filtered to own) | Retrieves maintenance work order tickets spreadsheet |
+
 ---
 
 ## 6. Testing Instructions

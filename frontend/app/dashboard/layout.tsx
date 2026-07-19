@@ -6,11 +6,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Shield, Menu, X, LayoutDashboard, Truck, Users, MapPin, 
   Flame, Wrench, FileText, BarChart3, Settings, LogOut, 
-  Search, Bell, User as UserIcon, Lock, ChevronLeft, ChevronRight, Moon, Sun
+  Search, Bell, User as UserIcon, Lock, ChevronLeft, ChevronRight, Moon, Sun, AlertTriangle
 } from 'lucide-react'
-import { authService, globalSearchService } from '@/lib/api'
+import { useQuery } from '@tanstack/react-query'
+import { authService, globalSearchService, analyticsService } from '@/lib/api'
 import { useToast } from '@/components/ui/toast'
 import { User } from '@/types'
+
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -102,6 +104,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     })
   }
 
+  // Fetch live notifications
+  const { data: notifications = [] } = useQuery<any[]>({
+    queryKey: ['dashboard-notifications'],
+    queryFn: () => analyticsService.getNotifications(),
+    refetchInterval: 30000,
+    enabled: isAuthenticated
+  })
+
   // Navigation Items
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard', active: pathname === '/dashboard', disabled: false },
@@ -110,10 +120,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'Trips', icon: MapPin, href: '/dashboard/trips', active: pathname.startsWith('/dashboard/trips'), disabled: false },
     { name: 'Fuel Management', icon: Flame, href: '/dashboard/fuel', active: pathname.startsWith('/dashboard/fuel'), disabled: false },
     { name: 'Maintenance', icon: Wrench, href: '/dashboard/maintenance', active: pathname.startsWith('/dashboard/maintenance'), disabled: false },
-    { name: 'Reports', icon: FileText, href: '#', active: false, disabled: true },
+    { name: 'Reports', icon: FileText, href: '/dashboard/reports', active: pathname.startsWith('/dashboard/reports'), disabled: false },
     { name: 'Analytics', icon: BarChart3, href: '#', active: false, disabled: true },
     { name: 'Settings', icon: Settings, href: '#', active: false, disabled: true },
   ]
+
 
   if (!isAuthenticated) {
     return (
@@ -512,7 +523,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all relative"
               >
                 <Bell className="h-4.5 w-4.5" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-accent animate-pulse" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 h-4 w-4 text-[9px] font-bold text-white bg-rose-500 rounded-full flex items-center justify-center animate-pulse">
+                    {notifications.length}
+                  </span>
+                )}
               </button>
 
               <AnimatePresence>
@@ -523,28 +538,45 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-2 w-80 rounded-xl border bg-card p-4 shadow-xl z-50 glass-panel"
+                      className="absolute right-0 mt-2 w-80 rounded-xl border bg-card p-4 shadow-xl z-50 glass-panel max-h-[400px] overflow-y-auto"
                     >
                       <div className="flex justify-between items-center pb-2 border-b mb-2">
-                        <span className="font-bold text-sm">Notifications</span>
-                        <span className="text-[10px] bg-accent/25 text-accent-foreground px-2 py-0.5 rounded-full font-bold">1 New</span>
+                        <span className="font-bold text-sm">Notifications Drawer</span>
+                        <span className="text-[10px] bg-rose-500/10 text-rose-500 px-2 py-0.5 rounded-full font-bold">
+                          {notifications.length} Alerts
+                        </span>
                       </div>
-                      <div className="space-y-3 py-1">
-                        <div className="text-xs flex gap-2.5 items-start bg-accent/5 p-2 rounded-lg">
-                          <Truck className="h-4 w-4 text-accent mt-0.5" />
-                          <div>
-                            <p className="font-bold">Sprint 1 Configured</p>
-                            <p className="text-muted-foreground text-[10px]">All base auth endpoints are active & running.</p>
+                      <div className="space-y-2.5 py-1">
+                        {notifications.length === 0 ? (
+                          <div className="text-center py-4 text-xs text-muted-foreground">
+                            No active warnings or alerts.
                           </div>
-                        </div>
-                        <div className="text-xs flex gap-2.5 items-start p-2 hover:bg-muted rounded-lg opacity-70">
-                          <Shield className="h-4 w-4 text-primary mt-0.5" />
-                          <div>
-                            <p className="font-semibold">Security Shield Active</p>
-                            <p className="text-muted-foreground text-[10px]">SimpleJWT tokens rotating properly.</p>
-                          </div>
-                        </div>
+                        ) : (
+                          notifications.map((n, idx) => {
+                            const isDanger = n.type === 'DANGER'
+                            const isWarning = n.type === 'WARNING'
+                            return (
+                              <div 
+                                key={n.id || idx} 
+                                className={`text-xs p-2 rounded-lg border flex gap-2.5 items-start ${
+                                  isDanger 
+                                    ? 'bg-rose-500/10 border-rose-500/25 text-rose-600 dark:text-rose-400' 
+                                    : isWarning 
+                                      ? 'bg-amber-500/10 border-amber-500/25 text-amber-600 dark:text-amber-400' 
+                                      : 'bg-blue-500/10 border-blue-500/25 text-blue-600 dark:text-blue-400'
+                                }`}
+                              >
+                                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                <div className="space-y-0.5">
+                                  <p className="font-bold text-[11px] leading-tight">{n.title}</p>
+                                  <p className="text-muted-foreground text-[10px] leading-snug">{n.desc}</p>
+                                </div>
+                              </div>
+                            )
+                          })
+                        )}
                       </div>
+
                     </motion.div>
                   </>
                 )}
